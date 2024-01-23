@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "nkeys.swift",
+    name: "NKeys",
     platforms: [
         .watchOS(.v6),
         .macOS(.v10_15)
@@ -13,8 +13,8 @@ let package = Package(
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "nkeys.swift",
-            targets: ["nkeys.swift"]),
+            name: "NKeys",
+            targets: ["NKeys"]),
     ],
     dependencies: [
         .package(
@@ -26,14 +26,14 @@ let package = Package(
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "nkeys.swift",
+            name: "NKeys",
             dependencies: [
                 .product(name: "Base32", package: "Base32")
             ]
         ),
 
         .testTarget(
-            name: "nkeys.swiftTests",
-            dependencies: ["nkeys.swift"]),
+            name: "NKeys.Tests",
+            dependencies: ["NKeys"]),
     ]
 )
