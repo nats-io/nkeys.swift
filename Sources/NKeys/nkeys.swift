@@ -14,6 +14,7 @@
 import Foundation
 import CryptoKit
 import Base32
+import Sodium
 
 struct Constants {
     static let encodedSeedLength: Int = 58
@@ -126,13 +127,16 @@ public struct KeyPair {
     let keyPairType: KeyPairType
     private let publicKey: Curve25519.Signing.PublicKey
     private let privateKey: Curve25519.Signing.PrivateKey?
+    private let keyPair: Sign.KeyPair?
 
     /// Explicit default initializer.
     public init(keyPairType: KeyPairType, publicKey: Curve25519.Signing.PublicKey, privateKey: Curve25519.Signing.PrivateKey?) {
         self.keyPairType = keyPairType
         self.publicKey = publicKey
         self.privateKey = privateKey
+        self.keyPair = nil
     }
+    
 
     /// Initializer that creates [KeyPair] from random bytes.
     public init(keyPairType: KeyPairType) throws {
@@ -157,6 +161,7 @@ public struct KeyPair {
         guard seed.count == Constants.encodedSeedLength else {
             throw NkeysErrors.invalidSeedLength("Bad seed length: \(seed.count)")
         }
+        let sodium = Sodium()
 
         // TODO: We should not upwrap here
         let raw = try decodeRaw(seed.data(using: .utf8)!)
@@ -169,10 +174,20 @@ public struct KeyPair {
         let b2 = (raw[0] & 7) << 5 | ((raw[1] & 248) >> 3)
         let kpType = KeyPairType(fromPrefixByte: b2)
         let seed = raw[2...] // Extract the seed part from the raw bytes.
+        let bytes: [UInt8] = Array(seed)
+        let kp = sodium.sign.keyPair(seed: bytes)
+//        let signature = sodium.sign.sign(message: "signature".bytes, secretKey: kp!.secretKey)!
+
+let currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+let fileURL = currentDirectoryURL.appendingPathComponent("signature.swift2")
 
         let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
 
-        self =  KeyPair(keyPairType: kpType, publicKey: signingKey.publicKey, privateKey: signingKey.self)
+        self.keyPairType = kpType
+        self.publicKey = signingKey.publicKey
+        self.privateKey = signingKey.self
+        self.keyPair = kp
+
     }
 
     public init(publicKey: String) throws {
@@ -190,10 +205,12 @@ public struct KeyPair {
 
     /// Attempts to sign the given input with the key pair's seed
     public func sign(input: Data) throws -> Data {
-        guard let privateKey = self.privateKey else {
+        guard let keyPar = self.keyPair else {
             throw NkeysErrors.missingPrivateKey("Can't sign PublicKey only KeyPair")
         }
-        return try privateKey.signature(for: input)
+        let inputBytes: [UInt8] = Array(input)
+        let signature = Sodium().sign.signature(message: inputBytes, secretKey: keyPar.secretKey)!
+        return Data(signature)
     }
 
     public func verify(input: Data, signature sig: Data) throws {

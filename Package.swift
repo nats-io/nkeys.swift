@@ -20,7 +20,8 @@ let package = Package(
         .package(
             url: "https://github.com/Jarema/Base32",
             branch: "main"
-        )
+        ),
+        .package(url: "https://github.com/jedisct1/swift-sodium.git", from: "0.9.0")
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -28,7 +29,8 @@ let package = Package(
         .target(
             name: "NKeys",
             dependencies: [
-                .product(name: "Base32", package: "Base32")
+                .product(name: "Base32", package: "Base32"),
+                .product(name: "Sodium", package: "swift-sodium")
             ]
         ),
 
