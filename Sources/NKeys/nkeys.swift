@@ -39,7 +39,7 @@ struct Constants {
          prefixByteServer,
          prefixByteUser,
          prefixByteModule,
-         prefixByteService,
+         prefixByteService
      ]
 }
 
@@ -60,7 +60,7 @@ public enum KeyPairType: String {
     case service = "SERVICE"
 
     init?(from string: String) {
-        let uppercased = string.uppercased();
+        let uppercased = string.uppercased()
         if let value = KeyPairType(rawValue: uppercased) {
             self = value
         } else {
@@ -136,7 +136,6 @@ public struct KeyPair {
         self.privateKey = privateKey
         self.keyPair = nil
     }
-    
 
     /// Initializer that creates [KeyPair] from random bytes.
     public init(keyPairType: KeyPairType) throws {
@@ -148,7 +147,7 @@ public struct KeyPair {
     }
 
     /// Initializer that creates [KeyPair] from provided [Data]. It has to be 32 bytes long.
-    public init(keyPairType: KeyPairType, rawBytes: Data) throws  {
+    public init(keyPairType: KeyPairType, rawBytes: Data) throws {
         guard rawBytes.count == 32 else {
             throw NkeysErrors.invalidRawBytesLength("Raw bytes data has to be of 32 lenght")
         }
@@ -176,10 +175,6 @@ public struct KeyPair {
         let seed = raw[2...] // Extract the seed part from the raw bytes.
         let bytes: [UInt8] = Array(seed)
         let kp = sodium.sign.keyPair(seed: bytes)
-//        let signature = sodium.sign.sign(message: "signature".bytes, secretKey: kp!.secretKey)!
-
-let currentDirectoryURL = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-let fileURL = currentDirectoryURL.appendingPathComponent("signature.swift2")
 
         let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
 
