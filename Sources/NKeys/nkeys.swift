@@ -121,46 +121,33 @@ public enum NkeysErrors: Error {
     case invalidKeyPair(String)
     case invalidSignatureSize(String)
     case verificationFailed(String)
+    case failedKeyPairGeneration(String)
 }
 
 public struct KeyPair {
     let keyPairType: KeyPairType
-    private let publicKey: Curve25519.Signing.PublicKey
-    private let privateKey: Curve25519.Signing.PrivateKey?
+    let publicKey: Sign.PublicKey
     private let keyPair: Sign.KeyPair?
+     private let sodium: Sodium
 
-    /// Explicit default initializer.
-    public init(keyPairType: KeyPairType, publicKey: Curve25519.Signing.PublicKey, privateKey: Curve25519.Signing.PrivateKey?) {
-        self.keyPairType = keyPairType
-        self.publicKey = publicKey
-        self.privateKey = privateKey
-        self.keyPair = nil
-    }
 
     /// Initializer that creates [KeyPair] from random bytes.
     public init(keyPairType: KeyPairType) throws {
-        guard let randomBytes =  generateSeedRandom() else {
-            throw NkeysErrors.randomBytesError("Failed to generate random bytes")
+        self.sodium = Sodium()
+        guard let keyPair = self.sodium.sign.keyPair() else {
+            throw NkeysErrors.randomBytesError("Can't generate random bytes")
         }
-        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: randomBytes)
-        self = KeyPair(keyPairType: keyPairType, publicKey: signingKey.publicKey, privateKey: signingKey.self)
+        self.keyPair = keyPair
+        self.keyPairType = keyPairType
+        self.publicKey = keyPair.publicKey
     }
 
-    /// Initializer that creates [KeyPair] from provided [Data]. It has to be 32 bytes long.
-    public init(keyPairType: KeyPairType, rawBytes: Data) throws {
-        guard rawBytes.count == 32 else {
-            throw NkeysErrors.invalidRawBytesLength("Raw bytes data has to be of 32 lenght")
-        }
-        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: rawBytes)
-        self = KeyPair(keyPairType: keyPairType, publicKey: signingKey.publicKey, privateKey: signingKey.self)
-    }
 
     /// Initlializer that creates [KeyPair] from provided seed.
     public init(seed: String) throws {
         guard seed.count == Constants.encodedSeedLength else {
             throw NkeysErrors.invalidSeedLength("Bad seed length: \(seed.count)")
         }
-        let sodium = Sodium()
 
         // TODO: We should not upwrap here
         let raw = try decodeRaw(seed.data(using: .utf8)!)
@@ -174,15 +161,14 @@ public struct KeyPair {
         let kpType = KeyPairType(fromPrefixByte: b2)
         let seed = raw[2...] // Extract the seed part from the raw bytes.
         let bytes: [UInt8] = Array(seed)
-        let kp = sodium.sign.keyPair(seed: bytes)
-
-        let signingKey = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
-
+        let sodium  = Sodium()
+        self.sodium = sodium
+        guard let  kp = sodium.sign.keyPair(seed: bytes) else {
+            throw NkeysErrors.failedKeyPairGeneration("Failed to generate key pair from seed")
+        }
         self.keyPairType = kpType
-        self.publicKey = signingKey.publicKey
-        self.privateKey = signingKey.self
         self.keyPair = kp
-
+        self.publicKey = kp.publicKey
     }
 
     public init(publicKey: String) throws {
@@ -193,9 +179,11 @@ public struct KeyPair {
             throw NkeysErrors.invalidPrefix("Not a valid public key prefix \(prefix)")
         }
         raw.remove(at: 0)
-        let signingKey = try Curve25519.Signing.PublicKey.init(rawRepresentation: raw)
-        self = KeyPair(keyPairType: KeyPairType.init(fromPrefixByte: prefix), publicKey: signingKey, privateKey: nil)
-
+        self.sodium = Sodium()
+        let rawBytes: [UInt8] = Array(raw)
+        self.publicKey = rawBytes
+        self.keyPairType = KeyPairType.init(fromPrefixByte: prefix)
+        self.keyPair = nil
     }
 
     /// Attempts to sign the given input with the key pair's seed
@@ -212,7 +200,7 @@ public struct KeyPair {
         guard sig.count == Constants.ed25519SignatureByteSize else {
             throw NkeysErrors.invalidSignatureSize("Signature size should be \(Constants.ed25519SignatureByteSize) but is \(sig.count)")
            }
-        if self.publicKey.isValidSignature(sig, for: input) {
+        if self.sodium.sign.verify(signedMessage: [UInt8](input), publicKey: self.publicKey) {
             return
         } else {
             throw NkeysErrors.verificationFailed("signature is not valid for given input")
@@ -222,14 +210,14 @@ public struct KeyPair {
     var publicKeyEncoded: String {
         var raw = Data()
         raw.append(self.keyPairType.getPrefixByte())
-        raw.append(contentsOf: self.publicKey.rawRepresentation)
+        raw.append(contentsOf: self.publicKey)
         pushCRC(data: &raw)
         return base32Encode(raw, padding: false)
     }
 
     var seed: String {
         get throws {
-        guard let seed = self.privateKey else {
+        guard let seed = self.keyPair?.secretKey else {
             throw NkeysErrors.invalidKeyPair("Can't return seed from KeyPair with Public Key only")
         }
         var raw = Data()
@@ -240,7 +228,7 @@ public struct KeyPair {
 
         raw.append(b1)
         raw.append(b2)
-        raw.append(seed.rawRepresentation)
+        raw.append(contentsOf: seed)
         pushCRC(data: &raw)
 
         return raw.base32EncodedStringNoPadding
