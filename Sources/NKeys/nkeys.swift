@@ -122,6 +122,7 @@ public enum NkeysErrors: Error {
     case invalidSignatureSize(String)
     case verificationFailed(String)
     case failedKeyPairGeneration(String)
+    case signingFailed(String)
 }
 
 public struct KeyPair {
@@ -192,7 +193,9 @@ public struct KeyPair {
             throw NkeysErrors.missingPrivateKey("Can't sign PublicKey only KeyPair")
         }
         let inputBytes: [UInt8] = Array(input)
-        let signature = Sodium().sign.signature(message: inputBytes, secretKey: keyPar.secretKey)!
+        guard let signature = self.sodium.sign.signature(message: inputBytes, secretKey: keyPar.secretKey) else {
+            throw NkeysErrors.signingFailed("failed to sign the message")
+        }
         return Data(signature)
     }
 
@@ -200,7 +203,7 @@ public struct KeyPair {
         guard sig.count == Constants.ed25519SignatureByteSize else {
             throw NkeysErrors.invalidSignatureSize("Signature size should be \(Constants.ed25519SignatureByteSize) but is \(sig.count)")
            }
-        if self.sodium.sign.verify(signedMessage: [UInt8](input), publicKey: self.publicKey) {
+        if self.sodium.sign.verify(message: [UInt8](input), publicKey: self.publicKey, signature: [UInt8](sig)) {
             return
         } else {
             throw NkeysErrors.verificationFailed("signature is not valid for given input")
@@ -228,7 +231,7 @@ public struct KeyPair {
 
         raw.append(b1)
         raw.append(b2)
-        raw.append(contentsOf: seed)
+        raw.append(contentsOf: seed[0..<32])
         pushCRC(data: &raw)
 
         return raw.base32EncodedStringNoPadding
