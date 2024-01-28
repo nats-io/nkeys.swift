@@ -43,6 +43,7 @@ struct Constants {
      ]
 }
 
+/// Represents the type of KeyPair
 public enum KeyPairType: String {
     /// A server identity
     case server = "SERVER"
@@ -59,17 +60,18 @@ public enum KeyPairType: String {
     /// A service / service provider identity
     case service = "SERVICE"
 
-    init?(from string: String) {
+    /// Initilizer that tries to create a KeyPair from its String representation.
+    public init(from string: String) throws {
         let uppercased = string.uppercased()
         if let value = KeyPairType(rawValue: uppercased) {
             self = value
         } else {
-            return nil
+            throw NkeysErrors.failedKeyPairTypeInit("could not create a KeyPairType from \(string)")
         }
     }
 
-    // Initializer that tries to create an enum from a prefix byte
-    init(fromPrefixByte prefixByte: UInt8) {
+    /// Initializer that tries to create an enum from a prefix byte
+    public init(fromPrefixByte prefixByte: UInt8) throws {
         switch prefixByte {
         case Constants.prefixByteServer:
             self = .server
@@ -86,8 +88,9 @@ public enum KeyPairType: String {
         case Constants.prefixByteService:
             self = .service
         default:
-            // If the byte does not match any case, return nil
-            self = .operator }
+            throw NkeysErrors.failedKeyPairGeneration("failed to init KeyPairType from \(prefixByte)")
+
+        }
     }
 
     func getPrefixByte() -> UInt8 {
@@ -110,6 +113,7 @@ public enum KeyPairType: String {
     }
 }
 
+/// NkeysErrors represents all possible errors when working with NKeys library
 public enum NkeysErrors: Error {
     case invalidSeedLength(String)
     case invalidPrefix(String)
@@ -123,8 +127,10 @@ public enum NkeysErrors: Error {
     case verificationFailed(String)
     case failedKeyPairGeneration(String)
     case signingFailed(String)
+    case failedKeyPairTypeInit(String)
 }
 
+/// KeyPair represents ED25519 Key Pair. It can contain either the pair, or just the public key which can be used when user needs just to verify a signature.
 public struct KeyPair {
     let keyPairType: KeyPairType
     let publicKey: Sign.PublicKey
@@ -159,7 +165,7 @@ public struct KeyPair {
             }
 
         let b2 = (raw[0] & 7) << 5 | ((raw[1] & 248) >> 3)
-        let kpType = KeyPairType(fromPrefixByte: b2)
+        let kpType = try KeyPairType(fromPrefixByte: b2)
         let seed = raw[2...] // Extract the seed part from the raw bytes.
         let bytes: [UInt8] = Array(seed)
         let sodium  = Sodium()
@@ -172,6 +178,7 @@ public struct KeyPair {
         self.publicKey = kp.publicKey
     }
 
+    /// Attempts to create a KeyPair containing only public key that can be used to verify signatures.
     public init(publicKey: String) throws {
         var raw = try decodeRaw(publicKey.data(using: .utf8)!)
 
@@ -183,11 +190,11 @@ public struct KeyPair {
         self.sodium = Sodium()
         let rawBytes: [UInt8] = Array(raw)
         self.publicKey = rawBytes
-        self.keyPairType = KeyPairType.init(fromPrefixByte: prefix)
+        self.keyPairType = try KeyPairType.init(fromPrefixByte: prefix)
         self.keyPair = nil
     }
 
-    /// Attempts to sign the given input with the key pair's seed
+    /// Attempts to sign the given input with the key pair's seed.
     public func sign(input: Data) throws -> Data {
         guard let keyPar = self.keyPair else {
             throw NkeysErrors.missingPrivateKey("Can't sign PublicKey only KeyPair")
@@ -199,6 +206,7 @@ public struct KeyPair {
         return Data(signature)
     }
 
+    /// Verifies signature for provided input.
     public func verify(input: Data, signature sig: Data) throws {
         guard sig.count == Constants.ed25519SignatureByteSize else {
             throw NkeysErrors.invalidSignatureSize("Signature size should be \(Constants.ed25519SignatureByteSize) but is \(sig.count)")
@@ -210,6 +218,8 @@ public struct KeyPair {
         }
 
        }
+    
+    /// Returns base32 encoded public key.
     var publicKeyEncoded: String {
         var raw = Data()
         raw.append(self.keyPairType.getPrefixByte())
@@ -218,6 +228,7 @@ public struct KeyPair {
         return base32Encode(raw, padding: false)
     }
 
+    /// Returns encoded seed.
     var seed: String {
         get throws {
         guard let seed = self.keyPair?.secretKey else {
