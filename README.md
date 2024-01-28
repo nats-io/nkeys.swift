@@ -1,3 +1,7 @@
+![build](https://github.com/nats-io/nkeys.swift/actions/workflows/swift.yml/badge.svg)
+![eg](https://img.shields.io/badge/Powered%20By-NATS-green)
+![GitHub License](https://img.shields.io/github/license/nats-io/nkeys.swift)
+
 # NKEYS
 
 Swift implementation of the NATS nkeys library.
