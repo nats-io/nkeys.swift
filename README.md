@@ -1,6 +1,6 @@
 ![build](https://github.com/nats-io/nkeys.swift/actions/workflows/swift.yml/badge.svg)
 ![eg](https://img.shields.io/badge/Powered%20By-NATS-green)
-![GitHub License](https://img.shields.io/github/license/nats-io/nkeys.swift)
+[![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
 
 # NKEYS
 
