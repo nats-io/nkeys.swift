@@ -1,6 +1,10 @@
 ![build](https://github.com/nats-io/nkeys.swift/actions/workflows/swift.yml/badge.svg)
 ![eg](https://img.shields.io/badge/Powered%20By-NATS-green)
 [![License Apache 2](https://img.shields.io/badge/License-Apache2-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnats-io%2Fnkeys.swift%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/nats-io/nkeys.swift)
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fnats-io%2Fnkeys.swift%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/nats-io/nkeys.swift)
+
+
 
 # NKEYS
 
