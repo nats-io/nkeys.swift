@@ -216,11 +216,10 @@ public struct KeyPair {
         } else {
             throw NkeysErrors.verificationFailed("signature is not valid for given input")
         }
-
        }
-    
+
     /// Returns base32 encoded public key.
-    var publicKeyEncoded: String {
+    public var publicKeyEncoded: String {
         var raw = Data()
         raw.append(self.keyPairType.getPrefixByte())
         raw.append(contentsOf: self.publicKey)
@@ -229,7 +228,7 @@ public struct KeyPair {
     }
 
     /// Returns encoded seed.
-    var seed: String {
+    public var seed: String {
         get throws {
         guard let seed = self.keyPair?.secretKey else {
             throw NkeysErrors.invalidKeyPair("Can't return seed from KeyPair with Public Key only")
