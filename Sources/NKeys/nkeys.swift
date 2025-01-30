@@ -11,36 +11,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import Foundation
-import CryptoKit
 import Base32
+import Foundation
 import Sodium
 
 struct Constants {
     static let encodedSeedLength: Int = 58
 
-     static let prefixByteSeed: UInt8 = 18 << 3
-     static let prefixBytePrivate: UInt8 = 15 << 3
-     static let prefixByteServer: UInt8 = 13 << 3
-     static let prefixByteCluster: UInt8 = 2 << 3
-     static let prefixByteOperator: UInt8 = 14 << 3
-     static let prefixByteModule: UInt8 = 12 << 3
-     static let prefixByteAccount: UInt8 = 0
-     static let prefixByteUser: UInt8 = 20 << 3
-     static let prefixByteService: UInt8 = 21 << 3
-     static let prefixByteUnknown: UInt8 = 23 << 3
+    static let prefixByteSeed: UInt8 = 18 << 3
+    static let prefixBytePrivate: UInt8 = 15 << 3
+    static let prefixByteServer: UInt8 = 13 << 3
+    static let prefixByteCluster: UInt8 = 2 << 3
+    static let prefixByteOperator: UInt8 = 14 << 3
+    static let prefixByteModule: UInt8 = 12 << 3
+    static let prefixByteAccount: UInt8 = 0
+    static let prefixByteUser: UInt8 = 20 << 3
+    static let prefixByteService: UInt8 = 21 << 3
+    static let prefixByteUnknown: UInt8 = 23 << 3
 
     static let ed25519SignatureByteSize = 64
 
-     static let publicKeyPrefixes: [UInt8] = [
-         prefixByteAccount,
-         prefixByteCluster,
-         prefixByteOperator,
-         prefixByteServer,
-         prefixByteUser,
-         prefixByteModule,
-         prefixByteService
-     ]
+    static let publicKeyPrefixes: [UInt8] = [
+        prefixByteAccount,
+        prefixByteCluster,
+        prefixByteOperator,
+        prefixByteServer,
+        prefixByteUser,
+        prefixByteModule,
+        prefixByteService,
+    ]
 }
 
 /// Represents the type of KeyPair
@@ -88,7 +87,8 @@ public enum KeyPairType: String {
         case Constants.prefixByteService:
             self = .service
         default:
-            throw NkeysErrors.failedKeyPairGeneration("failed to init KeyPairType from \(prefixByte)")
+            throw NkeysErrors.failedKeyPairGeneration(
+                "failed to init KeyPairType from \(prefixByte)")
 
         }
     }
@@ -135,8 +135,7 @@ public struct KeyPair {
     let keyPairType: KeyPairType
     let publicKey: Sign.PublicKey
     private let keyPair: Sign.KeyPair?
-     private let sodium: Sodium
-
+    private let sodium: Sodium
 
     /// Initializer that creates [KeyPair] from random bytes.
     public init(keyPairType: KeyPairType) throws {
@@ -149,7 +148,6 @@ public struct KeyPair {
         self.publicKey = keyPair.publicKey
     }
 
-
     /// Initlializer that creates [KeyPair] from provided seed.
     public init(seed: String) throws {
         guard seed.count == Constants.encodedSeedLength else {
@@ -161,16 +159,16 @@ public struct KeyPair {
 
         let b1 = raw[0] & 248
         guard b1 == Constants.prefixByteSeed else {
-                throw NkeysErrors.invalidPrefix("Incorrect byte prefix: \(raw[0])")
-            }
+            throw NkeysErrors.invalidPrefix("Incorrect byte prefix: \(raw[0])")
+        }
 
         let b2 = (raw[0] & 7) << 5 | ((raw[1] & 248) >> 3)
         let kpType = try KeyPairType(fromPrefixByte: b2)
-        let seed = raw[2...] // Extract the seed part from the raw bytes.
+        let seed = raw[2...]  // Extract the seed part from the raw bytes.
         let bytes: [UInt8] = Array(seed)
-        let sodium  = Sodium()
+        let sodium = Sodium()
         self.sodium = sodium
-        guard let  kp = sodium.sign.keyPair(seed: bytes) else {
+        guard let kp = sodium.sign.keyPair(seed: bytes) else {
             throw NkeysErrors.failedKeyPairGeneration("Failed to generate key pair from seed")
         }
         self.keyPairType = kpType
@@ -200,7 +198,10 @@ public struct KeyPair {
             throw NkeysErrors.missingPrivateKey("Can't sign PublicKey only KeyPair")
         }
         let inputBytes: [UInt8] = Array(input)
-        guard let signature = self.sodium.sign.signature(message: inputBytes, secretKey: keyPar.secretKey) else {
+        guard
+            let signature = self.sodium.sign.signature(
+                message: inputBytes, secretKey: keyPar.secretKey)
+        else {
             throw NkeysErrors.signingFailed("failed to sign the message")
         }
         return Data(signature)
@@ -209,14 +210,18 @@ public struct KeyPair {
     /// Verifies signature for provided input.
     public func verify(input: Data, signature sig: Data) throws {
         guard sig.count == Constants.ed25519SignatureByteSize else {
-            throw NkeysErrors.invalidSignatureSize("Signature size should be \(Constants.ed25519SignatureByteSize) but is \(sig.count)")
-           }
-        if self.sodium.sign.verify(message: [UInt8](input), publicKey: self.publicKey, signature: [UInt8](sig)) {
+            throw NkeysErrors.invalidSignatureSize(
+                "Signature size should be \(Constants.ed25519SignatureByteSize) but is \(sig.count)"
+            )
+        }
+        if self.sodium.sign.verify(
+            message: [UInt8](input), publicKey: self.publicKey, signature: [UInt8](sig))
+        {
             return
         } else {
             throw NkeysErrors.verificationFailed("signature is not valid for given input")
         }
-       }
+    }
 
     /// Returns base32 encoded public key.
     public var publicKeyEncoded: String {
@@ -230,31 +235,25 @@ public struct KeyPair {
     /// Returns encoded seed.
     public var seed: String {
         get throws {
-        guard let seed = self.keyPair?.secretKey else {
-            throw NkeysErrors.invalidKeyPair("Can't return seed from KeyPair with Public Key only")
-        }
-        var raw = Data()
-        let prefixBytes = self.keyPairType.getPrefixByte()
+            guard let seed = self.keyPair?.secretKey else {
+                throw NkeysErrors.invalidKeyPair(
+                    "Can't return seed from KeyPair with Public Key only")
+            }
+            var raw = Data()
+            let prefixBytes = self.keyPairType.getPrefixByte()
 
-        let b1 = Constants.prefixByteSeed | prefixBytes >> 5
-        let b2 =  (prefixBytes & 31) << 3
+            let b1 = Constants.prefixByteSeed | prefixBytes >> 5
+            let b2 = (prefixBytes & 31) << 3
 
-        raw.append(b1)
-        raw.append(b2)
-        raw.append(contentsOf: seed[0..<32])
-        pushCRC(data: &raw)
+            raw.append(b1)
+            raw.append(b2)
+            raw.append(contentsOf: seed[0..<32])
+            pushCRC(data: &raw)
 
-        return raw.base32EncodedStringNoPadding
+            return raw.base32EncodedStringNoPadding
         }
     }
 
-}
-
-func generateSeedRandom() -> Data? {
-    var bytes = [UInt8](repeating: 0, count: 32)
-    let status = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
-    guard status == errSecSuccess else { return nil }
-    return Data(bytes)
 }
 
 func decodeRaw(_ data: Data) throws -> Data {
